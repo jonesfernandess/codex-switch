@@ -1,0 +1,440 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────────────────────────────
+# claude-switch — Run multiple Claude Code accounts on one machine
+# ─────────────────────────────────────────────────────────────────────────────
+
+VERSION="1.2.0"
+CLAUDE_HOME="$HOME/.claude"
+PROFILE_PREFIX="$HOME/.claude-"
+PROFILE_MARKER=".profile-name"
+ZSHRC="$HOME/.zshrc"
+SHARED_ITEMS="skills CLAUDE.md settings.json plugins"
+
+# ── Colors & Icons ───────────────────────────────────────────────────────────
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+
+IC_CHECK="\xe2\x9c\x94"   # ✔
+IC_CROSS="\xe2\x9c\x98"   # ✘
+IC_ARROW="\xe2\x96\xb6"   # ▶
+IC_PERSON="\xe2\x97\x89"  # ◉
+IC_LINK="\xe2\x86\x92"    # →
+
+# ── Gum helpers ──────────────────────────────────────────────────────────────
+
+ensure_gum() {
+    if command -v gum >/dev/null 2>&1; then
+        return 0
+    fi
+    echo ""
+    printf "  ${YELLOW}gum${RESET} is required for interactive menus.\n"
+    echo ""
+    if command -v brew >/dev/null 2>&1; then
+        printf "  Installing via Homebrew...\n"
+        brew install gum
+    else
+        printf "  Install it: ${CYAN}brew install gum${RESET}  or  ${CYAN}go install github.com/charmbracelet/gum@latest${RESET}\n"
+        exit 1
+    fi
+}
+
+# ── Utility Functions ────────────────────────────────────────────────────────
+
+print_header() {
+    echo ""
+    gum style \
+        --border double \
+        --border-foreground 208 \
+        --padding "1 3" \
+        --margin "0 2" \
+        --align center \
+        "$(gum style --bold --foreground 208 'C L A U D E   S W I T C H')" \
+        "" \
+        "$(gum style --faint "v${VERSION}  ·  run multiple accounts side by side")"
+    echo ""
+}
+
+print_success() { printf "  ${GREEN}${IC_CHECK}${RESET}  %s\n" "$1"; }
+print_error()   { printf "  ${RED}${IC_CROSS}${RESET}  %s\n" "$1"; }
+print_warn()    { printf "  ${YELLOW}!${RESET}  %s\n" "$1"; }
+print_info()    { printf "  ${BLUE}${IC_ARROW}${RESET}  %s\n" "$1"; }
+print_dim()     { printf "  ${DIM}   %s${RESET}\n" "$1"; }
+
+validate_profile_name() {
+    local name="$1"
+    if [ -z "$name" ]; then
+        print_error "Profile name cannot be empty."
+        return 1
+    fi
+    if [ "$name" = "default" ]; then
+        print_error "'default' is reserved for the primary ~/.claude/ profile."
+        return 1
+    fi
+    if ! printf '%s' "$name" | grep -qE '^[a-zA-Z][a-zA-Z0-9_-]*$'; then
+        print_error "Invalid name. Use letters, numbers, hyphens, underscores. Must start with a letter."
+        return 1
+    fi
+    if [ ${#name} -gt 32 ]; then
+        print_error "Profile name must be 32 characters or fewer."
+        return 1
+    fi
+    return 0
+}
+
+profile_dir() { echo "${PROFILE_PREFIX}$1"; }
+
+profile_exists() {
+    local dir
+    dir="$(profile_dir "$1")"
+    [ -d "$dir" ] && [ -f "$dir/$PROFILE_MARKER" ]
+}
+
+get_all_profiles() {
+    for dir in "${PROFILE_PREFIX}"*/; do
+        [ -d "$dir" ] || continue
+        [ -f "$dir/$PROFILE_MARKER" ] || continue
+        local name
+        name="$(basename "$dir")"
+        name="${name#.claude-}"
+        echo "$name"
+    done
+}
+
+check_auth_status() {
+    local config_dir="$1"
+    local output
+    if [ "$config_dir" = "$CLAUDE_HOME" ]; then
+        output=$(claude auth status 2>&1) || true
+    else
+        output=$(CLAUDE_CONFIG_DIR="$config_dir" claude auth status 2>&1) || true
+    fi
+    local email
+    email=$(printf '%s' "$output" | grep -o '"email"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"email"[[:space:]]*:[[:space:]]*"//;s/"//')
+    if [ -n "$email" ]; then
+        echo "$email"
+    elif printf '%s' "$output" | grep -q '"loggedIn": true'; then
+        echo "logged in"
+    else
+        echo ""
+    fi
+}
+
+pick_profile() {
+    local action="$1"
+    local profiles
+    profiles=$(get_all_profiles)
+    if [ -z "$profiles" ]; then
+        print_warn "No profiles found. Create one first."
+        return 1
+    fi
+    local choice
+    choice=$(echo "$profiles" | gum choose --header "Select a profile to ${action}:" --cursor.foreground 208 --header.foreground 252)
+    if [ -z "$choice" ]; then
+        return 1
+    fi
+    echo "$choice"
+}
+
+# ── Commands ─────────────────────────────────────────────────────────────────
+
+cmd_create() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(gum input --placeholder "Profile name (e.g. work, personal)" --header "Create a new profile" --cursor.foreground 208 --header.foreground 252)
+    fi
+
+    if [ -z "$name" ]; then
+        print_info "Cancelled."
+        exit 0
+    fi
+
+    if ! validate_profile_name "$name"; then
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+
+    if [ -d "$dir" ] && [ -f "$dir/$PROFILE_MARKER" ]; then
+        print_error "Profile '$name' already exists at $dir"
+        exit 1
+    fi
+
+    if [ -d "$dir" ] && [ ! -f "$dir/$PROFILE_MARKER" ]; then
+        print_error "Directory $dir exists but is not a profile."
+        print_dim "Inspect it manually or choose a different name."
+        exit 1
+    fi
+
+    # Create profile
+    printf "\n  ${BOLD}Creating profile '${CYAN}%s${RESET}${BOLD}'${RESET}\n\n" "$name"
+
+    mkdir -p "$dir"
+    echo "$name" > "$dir/$PROFILE_MARKER"
+
+    # Symlink shared items
+    for item in $SHARED_ITEMS; do
+        if [ -e "$CLAUDE_HOME/$item" ]; then
+            ln -sf "$CLAUDE_HOME/$item" "$dir/$item"
+            printf "    ${DIM}${IC_LINK} %s${RESET}\n" "$item"
+        else
+            printf "    ${DIM}~ %s (not found, will link when created)${RESET}\n" "$item"
+        fi
+    done
+
+    echo ""
+    print_success "Profile created at ~/.claude-$name/"
+    echo ""
+
+    # Add alias to zshrc
+    if [ ! -f "$ZSHRC" ]; then
+        touch "$ZSHRC"
+    fi
+
+    if grep -q "alias claude-${name}=" "$ZSHRC" 2>/dev/null; then
+        print_info "Alias 'claude-$name' already in ~/.zshrc"
+    else
+        printf '\n# Claude profile: %s\nalias claude-%s='\''CLAUDE_CONFIG_DIR="%s" claude'\''\n' \
+            "$name" "$name" "$dir" >> "$ZSHRC"
+        printf "  ${GREEN}${IC_CHECK}${RESET}  Added alias ${BOLD}claude-${name}${RESET} to ~/.zshrc\n"
+    fi
+
+    echo ""
+
+    gum style \
+        --border rounded \
+        --border-foreground 240 \
+        --padding "1 2" \
+        --margin "0 2" \
+        "$(gum style --bold 'Quick start')" \
+        "" \
+        "  source ~/.zshrc" \
+        "  $(gum style --foreground 99 "claude-switch ${name}")" \
+        "" \
+        "$(gum style --faint 'Claude will prompt you to log in on first launch.')"
+
+    echo ""
+}
+
+cmd_list() {
+    echo ""
+    printf "  ${BOLD}Profiles${RESET}\n\n"
+
+    # Default profile
+    local default_status
+    default_status=$(check_auth_status "$CLAUDE_HOME")
+
+    if [ -n "$default_status" ]; then
+        printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-24s${RESET} ${GREEN}${IC_CHECK} %s${RESET}\n" \
+            "default" "~/.claude/" "$default_status"
+    else
+        printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-24s${RESET} ${RED}${IC_CROSS} not logged in${RESET}\n" \
+            "default" "~/.claude/"
+    fi
+
+    # Additional profiles
+    local profiles
+    profiles=$(get_all_profiles)
+    if [ -n "$profiles" ]; then
+        while IFS= read -r name; do
+            local dir status
+            dir="$(profile_dir "$name")"
+            status=$(check_auth_status "$dir")
+            if [ -n "$status" ]; then
+                printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-24s${RESET} ${GREEN}${IC_CHECK} %s${RESET}\n" \
+                    "$name" "~/.claude-$name/" "$status"
+            else
+                printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-24s${RESET} ${RED}${IC_CROSS} not logged in${RESET}\n" \
+                    "$name" "~/.claude-$name/"
+            fi
+        done <<< "$profiles"
+    fi
+
+    echo ""
+
+    local count=1
+    if [ -n "$profiles" ]; then
+        local profile_count
+        profile_count=$(printf '%s\n' "$profiles" | wc -l | tr -d ' ')
+        count=$((profile_count + 1))
+    fi
+    printf "  ${DIM}%d profile(s) total${RESET}\n\n" "$count"
+}
+
+cmd_delete() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(pick_profile "delete") || exit 1
+    fi
+
+    if [ "$name" = "default" ]; then
+        print_error "Cannot delete the default profile."
+        exit 1
+    fi
+
+    if ! profile_exists "$name"; then
+        print_error "Profile '$name' does not exist."
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+
+    echo ""
+    gum style \
+        --border rounded \
+        --border-foreground 196 \
+        --padding "1 2" \
+        --margin "0 2" \
+        "$(gum style --bold --foreground 196 "Delete profile '${name}'")" \
+        "" \
+        "This will permanently remove:" \
+        "  - Profile directory: ~/.claude-${name}/" \
+        "  - Alias 'claude-${name}' from ~/.zshrc" \
+        "  - Sessions, history, and cached data" \
+        "" \
+        "$(gum style --faint 'OAuth tokens in macOS Keychain may persist.')"
+
+    echo ""
+
+    if ! gum confirm "Delete profile '${name}'?" --affirmative "Yes, delete" --negative "Cancel" --default=false; then
+        echo ""
+        print_info "Cancelled."
+        echo ""
+        return
+    fi
+
+    echo ""
+
+    rm -rf "$dir"
+    print_success "Removed ~/.claude-$name/"
+
+    if [ -f "$ZSHRC" ]; then
+        sed -i '' "/^# Claude profile: ${name}$/d" "$ZSHRC" 2>/dev/null || true
+        sed -i '' "/^alias claude-${name}=/d" "$ZSHRC" 2>/dev/null || true
+        print_success "Removed alias from ~/.zshrc"
+    fi
+
+    echo ""
+    print_info "Run 'source ~/.zshrc' to refresh aliases."
+    echo ""
+}
+
+cmd_launch() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(pick_profile "launch") || exit 1
+    fi
+
+    if [ "$name" = "default" ]; then
+        exec claude
+    fi
+
+    if ! profile_exists "$name"; then
+        print_error "Profile '$name' does not exist."
+        print_dim "Run: claude-switch create $name"
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+    exec env CLAUDE_CONFIG_DIR="$dir" claude
+}
+
+cmd_interactive() {
+    print_header
+
+    local choice
+    choice=$(gum choose \
+        "Create a new profile" \
+        "List all profiles" \
+        "Launch a profile" \
+        "Delete a profile" \
+        "Exit" \
+        --header "What would you like to do?" \
+        --cursor.foreground 208 \
+        --header.foreground 252 \
+        --cursor "▶ " \
+        --selected.foreground 208)
+
+    case "$choice" in
+        "Create a new profile") cmd_create ;;
+        "List all profiles")    cmd_list ;;
+        "Launch a profile")     cmd_launch ;;
+        "Delete a profile")     cmd_delete ;;
+        "Exit"|"")              exit 0 ;;
+    esac
+}
+
+cmd_help() {
+    print_header
+    printf "  ${BOLD}USAGE${RESET}\n"
+    printf "    claude-switch ${DIM}[command] [name]${RESET}\n"
+    printf "    claude-switch ${DIM}<profile-name>${RESET}          ${DIM}# quick launch${RESET}\n\n"
+    printf "  ${BOLD}COMMANDS${RESET}\n"
+    printf "    ${CYAN}<name>${RESET}                Launch Claude with that profile\n"
+    printf "    ${CYAN}create${RESET} ${DIM}[name]${RESET}         Create a new profile\n"
+    printf "    ${CYAN}list${RESET}                  List all profiles and auth status\n"
+    printf "    ${CYAN}delete${RESET} ${DIM}[name]${RESET}         Delete a profile\n"
+    printf "    ${CYAN}help${RESET}                  Show this help message\n"
+    printf "    ${CYAN}version${RESET}               Show version\n\n"
+    printf "  ${BOLD}EXAMPLES${RESET}\n"
+    printf "    ${DIM}claude-switch work${RESET}              ${DIM}# launch work profile${RESET}\n"
+    printf "    ${DIM}claude-switch personal${RESET}          ${DIM}# launch personal profile${RESET}\n"
+    printf "    ${DIM}claude-switch create work${RESET}       ${DIM}# create a new profile${RESET}\n"
+    printf "    ${DIM}claude-switch list${RESET}              ${DIM}# show all profiles${RESET}\n"
+    printf "    ${DIM}claude-switch${RESET}                   ${DIM}# interactive menu${RESET}\n\n"
+    printf "  ${BOLD}HOW IT WORKS${RESET}\n"
+    printf "    Each profile gets its own ~/.claude-<name>/ directory with\n"
+    printf "    separate OAuth credentials and session data. Shared config\n"
+    printf "    (skills, settings, CLAUDE.md) is symlinked from ~/.claude/.\n"
+    echo ""
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+main() {
+    if ! command -v claude >/dev/null 2>&1; then
+        print_error "Claude Code not found in PATH."
+        print_dim "Install it first: https://docs.anthropic.com/en/docs/claude-code"
+        exit 1
+    fi
+
+    # Auto-install gum for interactive commands
+    case "${1:-}" in
+        help|-h|--help|version|-v|--version) ;;
+        *) ensure_gum ;;
+    esac
+
+    case "${1:-}" in
+        create)              shift; cmd_create "$@" ;;
+        list|ls)             shift; cmd_list "$@" ;;
+        delete|rm|remove)    shift; cmd_delete "$@" ;;
+        launch|run|start)    shift; cmd_launch "$@" ;;
+        help|-h|--help)      cmd_help ;;
+        version|-v|--version) echo "claude-switch v$VERSION" ;;
+        "")                  cmd_interactive ;;
+        *)
+            # If arg matches a profile name, launch it directly
+            if profile_exists "$1"; then
+                cmd_launch "$1"
+            else
+                print_error "Unknown command or profile: $1"
+                echo ""
+                cmd_help
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+main "$@"
