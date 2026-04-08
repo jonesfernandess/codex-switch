@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        claude: { orange: '#E87A35', dark: '#0d1117', darker: '#080b10', card: '#161b22', border: '#21262d', text: '#e6edf3', muted: '#8b949e' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body style="margin:0;padding:0;">
+    <!-- 1200x630 OG image -->
+    <div id="og" style="width:1200px;height:630px;" class="bg-claude-darker text-claude-text flex items-center px-16 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-claude-orange/8 rounded-full blur-[150px] pointer-events-none"></div>
+
+        <!-- Left side: text -->
+        <div class="flex-1 pr-12 relative">
+            <p class="text-claude-orange font-mono text-sm tracking-[0.25em] uppercase mb-4">Never /logout again</p>
+            <h1 class="text-[80px] font-bold tracking-tight leading-[0.95] mb-5">
+                Claude<br>
+                <span class="text-claude-orange">Switch</span>
+            </h1>
+            <p class="text-[22px] text-claude-muted leading-snug">
+                Run multiple Claude Code accounts<br>side by side. One machine. Zero friction.
+            </p>
+        </div>
+
+        <!-- Right side: terminal -->
+        <div class="w-[420px] shrink-0 relative">
+            <div class="bg-claude-dark border border-claude-border rounded-xl p-5 space-y-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
+                    <div class="w-3 h-3 rounded-full bg-[#febc2e]"></div>
+                    <div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
+                </div>
+                <div class="font-mono text-[15px] space-y-3">
+                    <p><span class="text-claude-orange">$</span> claude-switch create work</p>
+                    <p class="text-green-400">  ✔  Profile created</p>
+                    <p class="mt-2"><span class="text-claude-orange">$</span> claude-switch create personal</p>
+                    <p class="text-green-400">  ✔  Profile created</p>
+                    <div class="border-t border-claude-border my-2"></div>
+                    <p><span class="text-claude-orange">$</span> claude-switch work</p>
+                    <p class="text-claude-muted text-sm">  Launching Claude...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
