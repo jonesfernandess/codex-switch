@@ -82,6 +82,34 @@ install() {
     # Install dependencies
     check_deps
 
+    # ── Optional alias ───────────────────────────────────────────────────────
+    local shell_rc="$HOME/.zshrc"
+    [ -n "${BASH_VERSION:-}" ] && shell_rc="$HOME/.bashrc"
+
+    echo ""
+    printf "  ${BOLD}Optional:${RESET} make every ${CYAN}codex${RESET} call auto-switch accounts.\n"
+    printf "  This will add the following line to ${DIM}${shell_rc}${RESET}:\n"
+    echo ""
+    printf "    ${CYAN}alias codex='codex-switch auto'${RESET}\n"
+    echo ""
+    printf "  ${DIM}Any time you run 'codex', it will automatically use the next${RESET}\n"
+    printf "  ${DIM}profile in rotation and retry on quota/rate-limit errors.${RESET}\n"
+    echo ""
+    printf "  Add this alias? [y/N] "
+    read -r answer </dev/tty
+    if [ "${answer:-n}" = "y" ] || [ "${answer:-n}" = "Y" ]; then
+        if grep -q "alias codex='codex-switch auto'" "$shell_rc" 2>/dev/null; then
+            warn "Alias already present in ${shell_rc}"
+        else
+            printf '\n# codex-switch: auto-switch accounts on every codex call\nalias codex='"'"'codex-switch auto'"'"'\n' >> "$shell_rc"
+            success "Alias added to ${shell_rc}"
+            printf "  ${DIM}Run 'source ${shell_rc}' or open a new terminal to activate.${RESET}\n"
+        fi
+    else
+        info "Skipped. You can always add it manually:"
+        printf "    ${DIM}echo \"alias codex='codex-switch auto'\" >> %s${RESET}\n" "$shell_rc"
+    fi
+
     echo ""
     success "Installation complete!"
     echo ""
