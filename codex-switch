@@ -1,0 +1,679 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────────────────────────────
+# codex-switch — Run multiple Codex CLI accounts on one machine
+#               with automatic account rotation on quota/rate-limit errors
+# ─────────────────────────────────────────────────────────────────────────────
+
+VERSION="1.0.0"
+CODEX_DEFAULT_HOME="$HOME/.codex"
+PROFILE_PREFIX="$HOME/.codex-"
+PROFILE_MARKER=".profile-name"
+ZSHRC="$HOME/.zshrc"
+SHARED_ITEMS="rules skills AGENTS.md"
+AUTO_STATE_FILE="$HOME/.codex-switch-auto"
+
+# ── Colors & Icons ───────────────────────────────────────────────────────────
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+
+IC_CHECK="\xe2\x9c\x94"   # ✔
+IC_CROSS="\xe2\x9c\x98"   # ✘
+IC_ARROW="\xe2\x96\xb6"   # ▶
+IC_PERSON="\xe2\x97\x89"  # ◉
+IC_LINK="\xe2\x86\x92"    # →
+
+# ── Gum helpers ──────────────────────────────────────────────────────────────
+
+ensure_gum() {
+    if command -v gum >/dev/null 2>&1; then
+        return 0
+    fi
+    echo ""
+    printf "  ${YELLOW}gum${RESET} is required for interactive menus.\n"
+    echo ""
+    if command -v brew >/dev/null 2>&1; then
+        printf "  Installing via Homebrew...\n"
+        brew install gum
+    else
+        printf "  Install it: ${CYAN}brew install gum${RESET}  or  ${CYAN}go install github.com/charmbracelet/gum@latest${RESET}\n"
+        exit 1
+    fi
+}
+
+# ── Utility Functions ────────────────────────────────────────────────────────
+
+print_header() {
+    echo ""
+    gum style \
+        --border double \
+        --border-foreground 39 \
+        --padding "1 3" \
+        --margin "0 2" \
+        --align center \
+        "$(gum style --bold --foreground 39 'C O D E X   S W I T C H')" \
+        "" \
+        "$(gum style --faint "v${VERSION}  ·  run multiple accounts side by side  ·  auto-switches on quota")"
+    echo ""
+}
+
+print_success() { printf "  ${GREEN}${IC_CHECK}${RESET}  %s\n" "$1"; }
+print_error()   { printf "  ${RED}${IC_CROSS}${RESET}  %s\n" "$1"; }
+print_warn()    { printf "  ${YELLOW}!${RESET}  %s\n" "$1"; }
+print_info()    { printf "  ${BLUE}${IC_ARROW}${RESET}  %s\n" "$1"; }
+print_dim()     { printf "  ${DIM}   %s${RESET}\n" "$1"; }
+
+validate_profile_name() {
+    local name="$1"
+    if [ -z "$name" ]; then
+        print_error "Profile name cannot be empty."
+        return 1
+    fi
+    if [ "$name" = "default" ]; then
+        print_error "'default' is reserved for the primary ~/.codex/ profile."
+        return 1
+    fi
+    if ! printf '%s' "$name" | grep -qE '^[a-zA-Z][a-zA-Z0-9_-]*$'; then
+        print_error "Invalid name. Use letters, numbers, hyphens, underscores. Must start with a letter."
+        return 1
+    fi
+    if [ ${#name} -gt 32 ]; then
+        print_error "Profile name must be 32 characters or fewer."
+        return 1
+    fi
+    return 0
+}
+
+profile_dir() { echo "${PROFILE_PREFIX}$1"; }
+
+profile_exists() {
+    local dir
+    dir="$(profile_dir "$1")"
+    [ -d "$dir" ] && [ -f "$dir/$PROFILE_MARKER" ]
+}
+
+get_all_profiles() {
+    for dir in "${PROFILE_PREFIX}"*/; do
+        [ -d "$dir" ] || continue
+        [ -f "$dir/$PROFILE_MARKER" ] || continue
+        local name
+        name="$(basename "$dir")"
+        name="${name#.codex-}"
+        echo "$name"
+    done
+}
+
+check_auth_status() {
+    local config_dir="$1"
+    local output
+    if [ "$config_dir" = "$CODEX_DEFAULT_HOME" ]; then
+        output=$(codex login status 2>&1) || true
+    else
+        output=$(CODEX_HOME="$config_dir" codex login status 2>&1) || true
+    fi
+    if printf '%s' "$output" | grep -q "Logged in"; then
+        printf '%s' "$output" | sed 's/Logged in //'
+    else
+        echo ""
+    fi
+}
+
+pick_profile() {
+    local action="$1"
+    local profiles
+    profiles=$(get_all_profiles)
+    if [ -z "$profiles" ]; then
+        print_warn "No profiles found. Create one first."
+        return 1
+    fi
+    local choice
+    choice=$(echo "$profiles" | gum choose --header "Select a profile to ${action}:" --cursor.foreground 39 --header.foreground 252)
+    if [ -z "$choice" ]; then
+        return 1
+    fi
+    echo "$choice"
+}
+
+# ── Auto-switch State ────────────────────────────────────────────────────────
+
+# Returns ordered list: default first, then profiles alphabetically
+get_rotation_list() {
+    echo "default"
+    get_all_profiles | sort
+}
+
+get_rotation_index() {
+    if [ -f "$AUTO_STATE_FILE" ]; then
+        local val
+        val=$(cat "$AUTO_STATE_FILE" 2>/dev/null || echo "0")
+        if [[ "$val" =~ ^[0-9]+$ ]]; then
+            echo "$val"
+            return
+        fi
+    fi
+    echo "0"
+}
+
+set_rotation_index() {
+    echo "$1" > "$AUTO_STATE_FILE"
+}
+
+is_quota_error() {
+    # Returns 0 (true) if the file/string looks like a quota/rate-limit error
+    local source="$1"
+    grep -qiE \
+        "429|rate.?limit.?exceed|too many request|quota.?exceed|exceed.*quota|insufficient.?quota|usage.?limit|usage_limit_exceeded|capacity.?exceeded|overloaded" \
+        "$source" 2>/dev/null
+}
+
+# ── Commands ─────────────────────────────────────────────────────────────────
+
+cmd_create() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(gum input --placeholder "Profile name (e.g. work, personal)" --header "Create a new profile" --cursor.foreground 39 --header.foreground 252)
+    fi
+
+    if [ -z "$name" ]; then
+        print_info "Cancelled."
+        exit 0
+    fi
+
+    if ! validate_profile_name "$name"; then
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+
+    if [ -d "$dir" ] && [ -f "$dir/$PROFILE_MARKER" ]; then
+        print_error "Profile '$name' already exists at $dir"
+        exit 1
+    fi
+
+    if [ -d "$dir" ] && [ ! -f "$dir/$PROFILE_MARKER" ]; then
+        print_error "Directory $dir exists but is not a codex-switch profile."
+        print_dim "Inspect it manually or choose a different name."
+        exit 1
+    fi
+
+    printf "\n  ${BOLD}Creating profile '${CYAN}%s${RESET}${BOLD}'${RESET}\n\n" "$name"
+
+    mkdir -p "$dir"
+    echo "$name" > "$dir/$PROFILE_MARKER"
+
+    # Symlink shared items
+    for item in $SHARED_ITEMS; do
+        if [ -e "$CODEX_DEFAULT_HOME/$item" ]; then
+            ln -sf "$CODEX_DEFAULT_HOME/$item" "$dir/$item"
+            printf "    ${DIM}${IC_LINK} %s${RESET}\n" "$item"
+        else
+            printf "    ${DIM}~ %s (not found, will link when created)${RESET}\n" "$item"
+        fi
+    done
+
+    echo ""
+    print_success "Profile created at ~/.codex-$name/"
+    echo ""
+
+    # Add alias to zshrc
+    if [ ! -f "$ZSHRC" ]; then
+        touch "$ZSHRC"
+    fi
+
+    if grep -q "alias codex-${name}=" "$ZSHRC" 2>/dev/null; then
+        print_info "Alias 'codex-$name' already in ~/.zshrc"
+    else
+        printf '\n# Codex profile: %s\nalias codex-%s='\''CODEX_HOME="%s" codex'\''\n' \
+            "$name" "$name" "$dir" >> "$ZSHRC"
+        printf "  ${GREEN}${IC_CHECK}${RESET}  Added alias ${BOLD}codex-${name}${RESET} to ~/.zshrc\n"
+    fi
+
+    echo ""
+
+    gum style \
+        --border rounded \
+        --border-foreground 240 \
+        --padding "1 2" \
+        --margin "0 2" \
+        "$(gum style --bold 'Quick start')" \
+        "" \
+        "  source ~/.zshrc" \
+        "  $(gum style --foreground 39 "codex-switch ${name}")" \
+        "" \
+        "$(gum style --faint 'Codex will prompt you to log in on first launch.')"
+
+    echo ""
+}
+
+cmd_list() {
+    echo ""
+    printf "  ${BOLD}Profiles${RESET}\n\n"
+
+    # Default profile
+    local default_status
+    default_status=$(check_auth_status "$CODEX_DEFAULT_HOME")
+
+    if [ -n "$default_status" ]; then
+        printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-26s${RESET} ${GREEN}${IC_CHECK} %s${RESET}\n" \
+            "default" "~/.codex/" "$default_status"
+    else
+        printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-26s${RESET} ${RED}${IC_CROSS} not logged in${RESET}\n" \
+            "default" "~/.codex/"
+    fi
+
+    # Additional profiles
+    local profiles
+    profiles=$(get_all_profiles)
+    if [ -n "$profiles" ]; then
+        while IFS= read -r name; do
+            local dir status
+            dir="$(profile_dir "$name")"
+            status=$(check_auth_status "$dir")
+            if [ -n "$status" ]; then
+                printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-26s${RESET} ${GREEN}${IC_CHECK} %s${RESET}\n" \
+                    "$name" "~/.codex-$name/" "$status"
+            else
+                printf "  ${IC_PERSON}  ${BOLD}%-16s${RESET} ${DIM}%-26s${RESET} ${RED}${IC_CROSS} not logged in${RESET}\n" \
+                    "$name" "~/.codex-$name/"
+            fi
+        done <<< "$profiles"
+    fi
+
+    echo ""
+
+    local count=1
+    if [ -n "$profiles" ]; then
+        local profile_count
+        profile_count=$(printf '%s\n' "$profiles" | wc -l | tr -d ' ')
+        count=$((profile_count + 1))
+    fi
+
+    # Show auto-switch rotation state
+    local rotation_profiles=()
+    while IFS= read -r p; do rotation_profiles+=("$p"); done < <(get_rotation_list)
+    local rot_idx
+    rot_idx=$(get_rotation_index)
+    if [ $rot_idx -ge ${#rotation_profiles[@]} ]; then rot_idx=0; fi
+    local next_profile="${rotation_profiles[$rot_idx]}"
+
+    printf "  ${DIM}%d profile(s) total  ·  auto-switch next: %s${RESET}\n\n" "$count" "$next_profile"
+}
+
+cmd_delete() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(pick_profile "delete") || exit 1
+    fi
+
+    if [ "$name" = "default" ]; then
+        print_error "Cannot delete the default profile."
+        exit 1
+    fi
+
+    if ! profile_exists "$name"; then
+        print_error "Profile '$name' does not exist."
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+
+    echo ""
+    gum style \
+        --border rounded \
+        --border-foreground 196 \
+        --padding "1 2" \
+        --margin "0 2" \
+        "$(gum style --bold --foreground 196 "Delete profile '${name}'")" \
+        "" \
+        "This will permanently remove:" \
+        "  - Profile directory: ~/.codex-${name}/" \
+        "  - Alias 'codex-${name}' from ~/.zshrc" \
+        "  - Sessions, history, and cached data" \
+        "" \
+        "$(gum style --faint 'Auth tokens stored in auth.json will be removed too.')"
+
+    echo ""
+
+    if ! gum confirm "Delete profile '${name}'?" --affirmative "Yes, delete" --negative "Cancel" --default=false; then
+        echo ""
+        print_info "Cancelled."
+        echo ""
+        return
+    fi
+
+    echo ""
+
+    rm -rf "$dir"
+    print_success "Removed ~/.codex-$name/"
+
+    if [ -f "$ZSHRC" ]; then
+        sed -i '' "/^# Codex profile: ${name}$/d" "$ZSHRC" 2>/dev/null || true
+        sed -i '' "/^alias codex-${name}=/d" "$ZSHRC" 2>/dev/null || true
+        print_success "Removed alias from ~/.zshrc"
+    fi
+
+    echo ""
+    print_info "Run 'source ~/.zshrc' to refresh aliases."
+    echo ""
+}
+
+cmd_launch() {
+    local name="${1:-}"
+    if [ -z "$name" ]; then
+        name=$(pick_profile "launch") || exit 1
+    fi
+
+    if [ "$name" = "default" ]; then
+        exec codex
+    fi
+
+    if ! profile_exists "$name"; then
+        print_error "Profile '$name' does not exist."
+        print_dim "Run: codex-switch create $name"
+        exit 1
+    fi
+
+    local dir
+    dir="$(profile_dir "$name")"
+    exec env CODEX_HOME="$dir" codex
+}
+
+# ── Auto-switch command ──────────────────────────────────────────────────────
+#
+# Usage:
+#   codex-switch auto                    → interactive session, rotates profile each call
+#   codex-switch auto [codex-args...]    → passes args to codex with auto-rotation
+#   codex-switch auto exec "prompt"      → non-interactive, retries next profile on quota error
+#
+# How it works:
+#   Interactive sessions (TUI mode):
+#     - Picks the profile at current rotation index from ~/.codex-switch-auto
+#     - Runs codex interactively (full TUI, no output capture)
+#     - After codex exits: advances rotation so next call uses the next profile
+#     - If codex exits non-zero, offers to retry immediately with the next profile
+#
+#   Non-interactive sessions (exec/review subcommands):
+#     - Runs codex and captures stderr
+#     - Detects rate-limit / quota patterns (HTTP 429, "quota exceeded", etc.)
+#     - On match: silently switches to next profile and retries, up to N profiles
+#     - On success or non-quota failure: exits with the real exit code
+
+cmd_auto() {
+    local args=("$@")
+
+    # Build ordered rotation list
+    local profiles=()
+    while IFS= read -r p; do profiles+=("$p"); done < <(get_rotation_list)
+    local total=${#profiles[@]}
+
+    if [ $total -eq 0 ]; then
+        if [ "${#args[@]}" -gt 0 ]; then
+            exec codex "${args[@]}"
+        else
+            exec codex
+        fi
+    fi
+
+    # Load + validate rotation index
+    local idx
+    idx=$(get_rotation_index)
+    if [ "$idx" -ge "$total" ]; then idx=0; fi
+
+    # Determine if the call is interactive (TUI) or non-interactive (exec/review)
+    local is_interactive=true
+    if [ "${#args[@]}" -gt 0 ]; then
+        for arg in "${args[@]}"; do
+            case "$arg" in
+                exec|e|review) is_interactive=false; break ;;
+            esac
+        done
+    fi
+
+    # ── Non-interactive mode: full retry loop ──────────────────────────────
+
+    if [ "$is_interactive" = false ]; then
+        local tried=0
+        while [ $tried -lt $total ]; do
+            local profile="${profiles[$idx]}"
+            local dir
+            if [ "$profile" = "default" ]; then
+                dir="$CODEX_DEFAULT_HOME"
+            else
+                dir="$(profile_dir "$profile")"
+            fi
+
+            local tmp_err
+            tmp_err=$(mktemp)
+            local exit_code=0
+
+            if [ "$profile" = "default" ]; then
+                codex "${args[@]}" 2>"$tmp_err" || exit_code=$?
+            else
+                CODEX_HOME="$dir" codex "${args[@]}" 2>"$tmp_err" || exit_code=$?
+            fi
+
+            if [ $exit_code -ne 0 ] && is_quota_error "$tmp_err"; then
+                cat "$tmp_err" >&2
+                echo ""
+                print_warn "Profile '${profile}' hit rate limit / quota — switching to next account..."
+                echo ""
+                rm -f "$tmp_err"
+                idx=$(( (idx + 1) % total ))
+                set_rotation_index "$idx"
+                tried=$((tried + 1))
+                continue
+            fi
+
+            cat "$tmp_err" >&2
+            rm -f "$tmp_err"
+            set_rotation_index "$idx"
+            exit $exit_code
+        done
+
+        echo ""
+        print_error "All $total profile(s) have hit their quota / rate limit."
+        print_dim "Wait for limits to reset, then try again."
+        echo ""
+        exit 1
+    fi
+
+    # ── Interactive mode: single attempt, offer retry on error ────────────
+
+    local profile="${profiles[$idx]}"
+    local dir
+    if [ "$profile" = "default" ]; then
+        dir="$CODEX_DEFAULT_HOME"
+    else
+        dir="$(profile_dir "$profile")"
+    fi
+
+    # Advance rotation for the NEXT call regardless of outcome
+    local next_idx=$(( (idx + 1) % total ))
+    set_rotation_index "$next_idx"
+    local next_profile="${profiles[$next_idx]}"
+
+    print_info "Launching with profile: ${BOLD}${profile}${RESET}"
+    if [ "$total" -gt 1 ]; then
+        print_dim "Next auto-switch profile: ${next_profile}"
+    fi
+    echo ""
+
+    local exit_code=0
+    if [ "$profile" = "default" ]; then
+        if [ "${#args[@]}" -gt 0 ]; then
+            codex "${args[@]}" || exit_code=$?
+        else
+            codex || exit_code=$?
+        fi
+    else
+        if [ "${#args[@]}" -gt 0 ]; then
+            CODEX_HOME="$dir" codex "${args[@]}" || exit_code=$?
+        else
+            CODEX_HOME="$dir" codex || exit_code=$?
+        fi
+    fi
+
+    # If non-zero exit, give user the option to retry with the next profile
+    if [ $exit_code -ne 0 ] && [ $total -gt 1 ]; then
+        echo ""
+        print_warn "Codex exited with error (code ${exit_code})."
+        if gum confirm "Retry with next profile (${next_profile})?" \
+                --affirmative "Yes, switch" \
+                --negative "No, exit" \
+                --default=false \
+                --cursor.foreground 39 2>/dev/null; then
+            echo ""
+            # Recurse: next call picks next_idx which we already stored
+            if [ "${#args[@]}" -gt 0 ]; then
+                cmd_auto "${args[@]}"
+            else
+                cmd_auto
+            fi
+            return
+        fi
+    fi
+
+    exit $exit_code
+}
+
+cmd_next() {
+    local profiles=()
+    while IFS= read -r p; do profiles+=("$p"); done < <(get_rotation_list)
+    local total=${#profiles[@]}
+
+    if [ $total -le 1 ]; then
+        print_warn "Only one profile available. Create more with: codex-switch create <name>"
+        exit 0
+    fi
+
+    local idx
+    idx=$(get_rotation_index)
+    if [ "$idx" -ge "$total" ]; then idx=0; fi
+
+    local old_profile="${profiles[$idx]}"
+    idx=$(( (idx + 1) % total ))
+    set_rotation_index "$idx"
+    local new_profile="${profiles[$idx]}"
+
+    echo ""
+    print_success "Switched from '${old_profile}' → '${new_profile}'"
+    print_dim "Next codex-switch auto will use: ${new_profile}"
+    echo ""
+}
+
+cmd_interactive() {
+    print_header
+
+    local choice
+    choice=$(gum choose \
+        "Create a new profile" \
+        "List all profiles" \
+        "Launch a profile" \
+        "Launch with auto-switch" \
+        "Rotate to next profile" \
+        "Delete a profile" \
+        "Exit" \
+        --header "What would you like to do?" \
+        --cursor.foreground 39 \
+        --header.foreground 252 \
+        --cursor "▶ " \
+        --selected.foreground 39)
+
+    case "$choice" in
+        "Create a new profile")    cmd_create ;;
+        "List all profiles")       cmd_list ;;
+        "Launch a profile")        cmd_launch ;;
+        "Launch with auto-switch") cmd_auto ;;
+        "Rotate to next profile")  cmd_next ;;
+        "Delete a profile")        cmd_delete ;;
+        "Exit"|"")                 exit 0 ;;
+    esac
+}
+
+cmd_help() {
+    print_header
+    printf "  ${BOLD}USAGE${RESET}\n"
+    printf "    codex-switch ${DIM}[command] [name]${RESET}\n"
+    printf "    codex-switch ${DIM}<profile-name>${RESET}          ${DIM}# quick launch${RESET}\n\n"
+    printf "  ${BOLD}COMMANDS${RESET}\n"
+    printf "    ${CYAN}<name>${RESET}                Launch Codex with that profile\n"
+    printf "    ${CYAN}create${RESET} ${DIM}[name]${RESET}         Create a new profile\n"
+    printf "    ${CYAN}list${RESET}                  List all profiles and auth status\n"
+    printf "    ${CYAN}delete${RESET} ${DIM}[name]${RESET}         Delete a profile\n"
+    printf "    ${CYAN}auto${RESET} ${DIM}[args...]${RESET}        Launch with auto account rotation\n"
+    printf "    ${CYAN}next${RESET}                  Manually advance to the next profile\n"
+    printf "    ${CYAN}help${RESET}                  Show this help message\n"
+    printf "    ${CYAN}version${RESET}               Show version\n\n"
+    printf "  ${BOLD}AUTO-SWITCH${RESET}\n"
+    printf "    ${DIM}codex-switch auto${RESET}               ${DIM}# interactive, rotates profile each call${RESET}\n"
+    printf "    ${DIM}codex-switch auto exec \"prompt\"${RESET}  ${DIM}# retries next profile on quota error${RESET}\n"
+    printf "    ${DIM}codex-switch next${RESET}               ${DIM}# manually advance rotation${RESET}\n\n"
+    printf "  ${BOLD}EXAMPLES${RESET}\n"
+    printf "    ${DIM}codex-switch work${RESET}              ${DIM}# launch work profile${RESET}\n"
+    printf "    ${DIM}codex-switch personal${RESET}          ${DIM}# launch personal profile${RESET}\n"
+    printf "    ${DIM}codex-switch create work${RESET}       ${DIM}# create a new profile${RESET}\n"
+    printf "    ${DIM}codex-switch list${RESET}              ${DIM}# show all profiles${RESET}\n"
+    printf "    ${DIM}codex-switch auto${RESET}              ${DIM}# auto-switch session${RESET}\n"
+    printf "    ${DIM}codex-switch${RESET}                   ${DIM}# interactive menu${RESET}\n\n"
+    printf "  ${BOLD}HOW IT WORKS${RESET}\n"
+    printf "    Each profile gets its own ~/.codex-<name>/ directory with\n"
+    printf "    separate auth credentials and session data. Shared config\n"
+    printf "    (rules, skills, AGENTS.md) is symlinked from ~/.codex/.\n"
+    printf "\n"
+    printf "    Auto-switch tracks a rotation index in ~/.codex-switch-auto.\n"
+    printf "    Interactive sessions advance the index on every call so load\n"
+    printf "    is spread across accounts. Non-interactive sessions (exec/review)\n"
+    printf "    detect HTTP 429 / quota errors and retry the next profile\n"
+    printf "    automatically until one succeeds or all are exhausted.\n"
+    echo ""
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+main() {
+    if ! command -v codex >/dev/null 2>&1; then
+        print_error "Codex CLI not found in PATH."
+        print_dim "Install it first: https://github.com/openai/codex"
+        exit 1
+    fi
+
+    # Auto-install gum for interactive commands
+    case "${1:-}" in
+        help|-h|--help|version|-v|--version) ;;
+        *) ensure_gum ;;
+    esac
+
+    case "${1:-}" in
+        create)              shift; cmd_create "$@" ;;
+        list|ls)             cmd_list ;;
+        delete|rm|remove)    shift; cmd_delete "$@" ;;
+        launch|run|start)    shift; cmd_launch "$@" ;;
+        auto)                shift; cmd_auto "$@" ;;
+        next)                cmd_next ;;
+        help|-h|--help)      cmd_help ;;
+        version|-v|--version) echo "codex-switch v$VERSION" ;;
+        "")                  cmd_interactive ;;
+        *)
+            if profile_exists "$1"; then
+                cmd_launch "$1"
+            else
+                print_error "Unknown command or profile: $1"
+                echo ""
+                cmd_help
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+main "$@"

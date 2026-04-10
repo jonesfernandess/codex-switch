@@ -2,13 +2,12 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Claude Switch installer
-# https://github.com/SaschaHeyer/claude-switch
+# Codex Switch installer
 # ─────────────────────────────────────────────────────────────────────────────
 
-REPO="SaschaHeyer/claude-switch"
+REPO="jonesfernandess/codex-switch"
 INSTALL_DIR="$HOME/.local/bin"
-BINARY_NAME="claude-switch"
+BINARY_NAME="codex-switch"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,9 +25,9 @@ error()   { printf "${RED}✘${RESET}  %s\n" "$1"; exit 1; }
 # ── Preflight checks ────────────────────────────────────────────────────────
 
 check_deps() {
-    if ! command -v claude >/dev/null 2>&1; then
-        warn "Claude Code not found. Install it first:"
-        printf "    ${DIM}https://docs.anthropic.com/en/docs/claude-code${RESET}\n"
+    if ! command -v codex >/dev/null 2>&1; then
+        warn "Codex CLI not found. Install it first:"
+        printf "    ${DIM}https://github.com/openai/codex${RESET}\n"
         echo ""
     fi
 
@@ -47,18 +46,18 @@ check_deps() {
 
 install() {
     echo ""
-    printf "${BOLD}Claude Switch${RESET} — installer\n"
+    printf "${BOLD}Codex Switch${RESET} — installer\n"
     echo ""
 
     # Create install directory
     mkdir -p "$INSTALL_DIR"
 
     # Download the script
-    info "Downloading claude-switch..."
+    info "Downloading codex-switch..."
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/claude-switch" -o "${INSTALL_DIR}/${BINARY_NAME}"
+        curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/codex-switch" -o "${INSTALL_DIR}/${BINARY_NAME}"
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO "${INSTALL_DIR}/${BINARY_NAME}" "https://raw.githubusercontent.com/${REPO}/main/claude-switch"
+        wget -qO "${INSTALL_DIR}/${BINARY_NAME}" "https://raw.githubusercontent.com/${REPO}/main/codex-switch"
     else
         error "curl or wget is required to install."
     fi
@@ -87,9 +86,10 @@ install() {
     success "Installation complete!"
     echo ""
     printf "  Get started:\n"
-    printf "    ${CYAN}claude-switch create work${RESET}       ${DIM}# create a profile${RESET}\n"
-    printf "    ${CYAN}claude-switch work${RESET}              ${DIM}# launch it${RESET}\n"
-    printf "    ${CYAN}claude-switch${RESET}                   ${DIM}# interactive menu${RESET}\n"
+    printf "    ${CYAN}codex-switch create work${RESET}       ${DIM}# create a profile${RESET}\n"
+    printf "    ${CYAN}codex-switch work${RESET}              ${DIM}# launch it${RESET}\n"
+    printf "    ${CYAN}codex-switch auto${RESET}              ${DIM}# auto-switch on quota${RESET}\n"
+    printf "    ${CYAN}codex-switch${RESET}                   ${DIM}# interactive menu${RESET}\n"
     echo ""
 }
 
@@ -97,18 +97,18 @@ install() {
 
 uninstall() {
     echo ""
-    printf "${BOLD}Claude Switch${RESET} — uninstaller\n"
+    printf "${BOLD}Codex Switch${RESET} — uninstaller\n"
     echo ""
 
     if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
         rm -f "${INSTALL_DIR}/${BINARY_NAME}"
         success "Removed ${INSTALL_DIR}/${BINARY_NAME}"
     else
-        warn "claude-switch not found at ${INSTALL_DIR}/${BINARY_NAME}"
+        warn "codex-switch not found at ${INSTALL_DIR}/${BINARY_NAME}"
     fi
 
     echo ""
-    info "Profile directories (~/.claude-*) were not removed."
+    info "Profile directories (~/.codex-*) were not removed."
     info "Remove them manually if needed."
     echo ""
 }
