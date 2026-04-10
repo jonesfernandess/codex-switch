@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Switch — Run multiple Claude Code accounts side by side</title>
-    <meta name="description" content="One machine. Multiple Claude Code logins. Zero friction. Switch between work and personal accounts instantly.">
+    <title>Codex Switch — Run multiple Codex CLI accounts side by side</title>
+    <meta name="description" content="One machine. Multiple Codex logins. Zero friction. Auto-switches on quota.">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Claude Switch — Run multiple Claude Code accounts side by side">
-    <meta property="og:description" content="One machine. Multiple logins. Zero friction. Switch between work and personal Claude Code accounts instantly.">
-    <meta property="og:image" content="https://claudeswitch.dev/og-image.png">
-    <meta property="og:url" content="https://claudeswitch.dev">
+    <meta property="og:title" content="Codex Switch — Run multiple Codex CLI accounts side by side">
+    <meta property="og:description" content="One machine. Multiple logins. Zero friction. Auto-switches on quota.">
+    <meta property="og:image" content="https://codexswitch.dev/og-image.png">
+    <meta property="og:url" content="https://codexswitch.dev">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Claude Switch — Run multiple Claude Code accounts side by side">
-    <meta name="twitter:description" content="One machine. Multiple logins. Zero friction.">
-    <meta name="twitter:image" content="https://claudeswitch.dev/og-image.png">
+    <meta name="twitter:title" content="Codex Switch — Run multiple Codex CLI accounts side by side">
+    <meta name="twitter:description" content="One machine. Multiple logins. Zero friction. Auto-switches on quota.">
+    <meta name="twitter:image" content="https://codexswitch.dev/og-image.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -25,8 +25,8 @@
             theme: {
                 extend: {
                     colors: {
-                        claude: {
-                            orange: '#E87A35',
+                        codex: {
+                            blue: '#10a37f',
                             dark: '#0d1117',
                             darker: '#080b10',
                             card: '#161b22',
@@ -61,54 +61,54 @@
         .copy-btn:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="bg-claude-darker text-claude-text antialiased">
+<body class="bg-codex-darker text-codex-text antialiased">
 
     <!-- Hero -->
     <section class="min-h-screen flex flex-col justify-center px-6 relative overflow-hidden">
         <!-- Subtle gradient glow -->
-        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-claude-orange/5 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-codex-blue/5 rounded-full blur-[120px] pointer-events-none"></div>
 
         <div class="max-w-3xl mx-auto w-full relative">
-            <p class="text-claude-orange font-mono text-sm tracking-widest uppercase mb-6 fade-up fade-up-1">Never /logout again</p>
+            <p class="text-codex-blue font-mono text-sm tracking-widest uppercase mb-6 fade-up fade-up-1">Never log out again</p>
             <h1 class="text-5xl sm:text-7xl font-bold tracking-tight leading-[1.05] mb-6 fade-up fade-up-2">
-                Claude<br>
-                <span class="text-claude-orange">Switch</span>
+                Codex<br>
+                <span class="text-codex-blue">Switch</span>
             </h1>
-            <p class="text-xl sm:text-2xl text-claude-muted max-w-lg mb-10 fade-up fade-up-3">
-                Run your work and personal Claude Code accounts side by side. One machine. Multiple logins. Zero friction.
+            <p class="text-xl sm:text-2xl text-codex-muted max-w-lg mb-10 fade-up fade-up-3">
+                Run your work and personal Codex CLI accounts side by side. One machine. Multiple logins. Auto-switches on quota.
             </p>
 
             <!-- Install command -->
             <div class="fade-up fade-up-4">
-                <div class="bg-claude-dark border border-claude-border rounded-lg p-4 max-w-xl group relative">
+                <div class="bg-codex-dark border border-codex-border rounded-lg p-4 max-w-xl group relative">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="flex gap-1.5">
                             <div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
                             <div class="w-3 h-3 rounded-full bg-[#febc2e]"></div>
                             <div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
                         </div>
-                        <span class="text-claude-muted text-xs font-mono">terminal</span>
+                        <span class="text-codex-muted text-xs font-mono">terminal</span>
                     </div>
                     <div class="font-mono text-sm flex items-center justify-between">
                         <div>
-                            <span class="text-claude-orange">$</span>
-                            <span class="text-claude-text ml-2" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/claude-switch/main/install.sh | sh</span>
-                            <span class="cursor-blink text-claude-orange">_</span>
+                            <span class="text-codex-blue">$</span>
+                            <span class="text-codex-text ml-2" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh</span>
+                            <span class="cursor-blink text-codex-blue">_</span>
                         </div>
-                        <button onclick="copyInstall()" class="copy-btn text-claude-muted hover:text-claude-text transition-colors ml-4 shrink-0" title="Copy">
+                        <button onclick="copyInstall()" class="copy-btn text-codex-muted hover:text-codex-text transition-colors ml-4 shrink-0" title="Copy">
                             <svg id="copy-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <svg id="check-icon" class="w-5 h-5 hidden text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         </button>
                     </div>
                 </div>
-                <div class="flex gap-4 mt-4 text-sm text-claude-muted">
-                    <a href="https://github.com/SaschaHeyer/claude-switch" class="hover:text-claude-text transition-colors flex items-center gap-1.5">
+                <div class="flex gap-4 mt-4 text-sm text-codex-muted">
+                    <a href="https://github.com/SaschaHeyer/codex-switch" class="hover:text-codex-text transition-colors flex items-center gap-1.5">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                         GitHub
                     </a>
-                    <span class="text-claude-border">·</span>
+                    <span class="text-codex-border">·</span>
                     <span>macOS & Linux</span>
-                    <span class="text-claude-border">·</span>
+                    <span class="text-codex-border">·</span>
                     <span>MIT License</span>
                 </div>
             </div>
@@ -116,24 +116,24 @@
     </section>
 
     <!-- Problem / Solution -->
-    <section class="px-6 py-24 border-t border-claude-border">
+    <section class="px-6 py-24 border-t border-codex-border">
         <div class="max-w-3xl mx-auto">
             <div class="grid sm:grid-cols-2 gap-12">
                 <div>
-                    <p class="text-claude-muted text-sm font-mono uppercase tracking-wider mb-4">Before</p>
-                    <div class="bg-claude-dark border border-claude-border rounded-lg p-5 font-mono text-sm space-y-2">
-                        <p><span class="text-claude-orange">$</span> claude <span class="text-claude-muted"># logged in as work</span></p>
-                        <p><span class="text-claude-orange">$</span> /logout</p>
-                        <p><span class="text-claude-orange">$</span> /login <span class="text-claude-muted"># switch to personal</span></p>
-                        <p><span class="text-claude-orange">$</span> <span class="text-claude-muted"># ...repeat forever</span></p>
+                    <p class="text-codex-muted text-sm font-mono uppercase tracking-wider mb-4">Before</p>
+                    <div class="bg-codex-dark border border-codex-border rounded-lg p-5 font-mono text-sm space-y-2">
+                        <p><span class="text-codex-blue">$</span> codex <span class="text-codex-muted"># logged in as work</span></p>
+                        <p><span class="text-codex-blue">$</span> codex logout</p>
+                        <p><span class="text-codex-blue">$</span> codex login <span class="text-codex-muted"># switch to personal</span></p>
+                        <p><span class="text-codex-blue">$</span> <span class="text-codex-muted"># ...repeat forever</span></p>
                     </div>
                 </div>
                 <div>
-                    <p class="text-claude-orange text-sm font-mono uppercase tracking-wider mb-4">After</p>
-                    <div class="bg-claude-dark border border-claude-orange/30 rounded-lg p-5 font-mono text-sm space-y-2">
-                        <p><span class="text-claude-orange">$</span> claude-switch work</p>
-                        <p><span class="text-claude-orange">$</span> claude-switch personal</p>
-                        <p class="text-claude-muted pt-2">Both running. Side by side.</p>
+                    <p class="text-codex-blue text-sm font-mono uppercase tracking-wider mb-4">After</p>
+                    <div class="bg-codex-dark border border-codex-blue/30 rounded-lg p-5 font-mono text-sm space-y-2">
+                        <p><span class="text-codex-blue">$</span> codex-switch work</p>
+                        <p><span class="text-codex-blue">$</span> codex-switch personal</p>
+                        <p class="text-codex-muted pt-2">Both running. Side by side.</p>
                     </div>
                 </div>
             </div>
@@ -141,49 +141,49 @@
     </section>
 
     <!-- How it works -->
-    <section class="px-6 py-24 border-t border-claude-border">
+    <section class="px-6 py-24 border-t border-codex-border">
         <div class="max-w-3xl mx-auto">
-            <h2 class="text-3xl sm:text-4xl font-bold mb-16">Three commands.<br><span class="text-claude-orange">That's it.</span></h2>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-16">Three commands.<br><span class="text-codex-blue">That's it.</span></h2>
 
             <div class="space-y-12">
                 <!-- Step 1 -->
                 <div class="flex gap-6">
-                    <div class="shrink-0 w-10 h-10 rounded-full bg-claude-orange/10 border border-claude-orange/30 flex items-center justify-center text-claude-orange font-mono font-bold text-sm">1</div>
+                    <div class="shrink-0 w-10 h-10 rounded-full bg-codex-blue/10 border border-codex-blue/30 flex items-center justify-center text-codex-blue font-mono font-bold text-sm">1</div>
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-3">Create profiles</h3>
-                        <div class="bg-claude-dark border border-claude-border rounded-lg p-4 font-mono text-sm space-y-1">
-                            <p><span class="text-claude-orange">$</span> claude-switch create work</p>
-                            <p><span class="text-claude-orange">$</span> claude-switch create personal</p>
+                        <div class="bg-codex-dark border border-codex-border rounded-lg p-4 font-mono text-sm space-y-1">
+                            <p><span class="text-codex-blue">$</span> codex-switch create work</p>
+                            <p><span class="text-codex-blue">$</span> codex-switch create personal</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Step 2 -->
                 <div class="flex gap-6">
-                    <div class="shrink-0 w-10 h-10 rounded-full bg-claude-orange/10 border border-claude-orange/30 flex items-center justify-center text-claude-orange font-mono font-bold text-sm">2</div>
+                    <div class="shrink-0 w-10 h-10 rounded-full bg-codex-blue/10 border border-codex-blue/30 flex items-center justify-center text-codex-blue font-mono font-bold text-sm">2</div>
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-3">Launch by name</h3>
-                        <div class="bg-claude-dark border border-claude-border rounded-lg p-4 font-mono text-sm">
-                            <p><span class="text-claude-orange">$</span> claude-switch work</p>
+                        <div class="bg-codex-dark border border-codex-border rounded-lg p-4 font-mono text-sm">
+                            <p><span class="text-codex-blue">$</span> codex-switch work</p>
                         </div>
-                        <p class="text-claude-muted text-sm mt-2">Claude opens with that account. First time only: log in once.</p>
+                        <p class="text-codex-muted text-sm mt-2">Codex opens with that account. First time only: log in once.</p>
                     </div>
                 </div>
 
                 <!-- Step 3 -->
                 <div class="flex gap-6">
-                    <div class="shrink-0 w-10 h-10 rounded-full bg-claude-orange/10 border border-claude-orange/30 flex items-center justify-center text-claude-orange font-mono font-bold text-sm">3</div>
+                    <div class="shrink-0 w-10 h-10 rounded-full bg-codex-blue/10 border border-codex-blue/30 flex items-center justify-center text-codex-blue font-mono font-bold text-sm">3</div>
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold mb-3">Run both at once</h3>
-                        <div class="bg-claude-dark border border-claude-border rounded-lg p-4 font-mono text-sm">
+                        <div class="bg-codex-dark border border-codex-border rounded-lg p-4 font-mono text-sm">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p class="text-claude-muted text-xs mb-2">Terminal 1</p>
-                                    <p><span class="text-claude-orange">$</span> claude-switch work</p>
+                                    <p class="text-codex-muted text-xs mb-2">Terminal 1</p>
+                                    <p><span class="text-codex-blue">$</span> codex-switch work</p>
                                 </div>
                                 <div>
-                                    <p class="text-claude-muted text-xs mb-2">Terminal 2</p>
-                                    <p><span class="text-claude-orange">$</span> claude-switch personal</p>
+                                    <p class="text-codex-muted text-xs mb-2">Terminal 2</p>
+                                    <p><span class="text-codex-blue">$</span> codex-switch personal</p>
                                 </div>
                             </div>
                         </div>
@@ -194,61 +194,69 @@
     </section>
 
     <!-- Features -->
-    <section class="px-6 py-24 border-t border-claude-border">
+    <section class="px-6 py-24 border-t border-codex-border">
         <div class="max-w-3xl mx-auto">
-            <h2 class="text-3xl sm:text-4xl font-bold mb-12">What you <span class="text-claude-orange">get</span></h2>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-12">What you <span class="text-codex-blue">get</span></h2>
 
             <div class="grid sm:grid-cols-2 gap-6">
-                <div class="bg-claude-card border border-claude-border rounded-lg p-6">
-                    <div class="text-claude-orange text-2xl mb-3">&#9889;</div>
+                <div class="bg-codex-card border border-codex-border rounded-lg p-6">
+                    <div class="text-codex-blue text-2xl mb-3">&#9889;</div>
                     <h3 class="font-semibold mb-2">Instant switching</h3>
-                    <p class="text-claude-muted text-sm">Jump between accounts with a single command. No logout/login dance.</p>
+                    <p class="text-codex-muted text-sm">Jump between accounts with a single command. No logout/login dance.</p>
                 </div>
-                <div class="bg-claude-card border border-claude-border rounded-lg p-6">
-                    <div class="text-claude-orange text-2xl mb-3">&#8741;</div>
+                <div class="bg-codex-card border border-codex-border rounded-lg p-6">
+                    <div class="text-codex-blue text-2xl mb-3">&#8741;</div>
                     <h3 class="font-semibold mb-2">Side by side</h3>
-                    <p class="text-claude-muted text-sm">Run work and personal sessions simultaneously in separate terminals.</p>
+                    <p class="text-codex-muted text-sm">Run work and personal sessions simultaneously in separate terminals.</p>
                 </div>
-                <div class="bg-claude-card border border-claude-border rounded-lg p-6">
-                    <div class="text-claude-orange text-2xl mb-3">&#128279;</div>
+                <div class="bg-codex-card border border-codex-border rounded-lg p-6">
+                    <div class="text-codex-blue text-2xl mb-3">&#128279;</div>
                     <h3 class="font-semibold mb-2">Shared config</h3>
-                    <p class="text-claude-muted text-sm">Skills, settings, and CLAUDE.md are symlinked across profiles. No duplication.</p>
+                    <p class="text-codex-muted text-sm">Rules, skills, and AGENTS.md are symlinked across profiles. No duplication.</p>
                 </div>
-                <div class="bg-claude-card border border-claude-border rounded-lg p-6">
-                    <div class="text-claude-orange text-2xl mb-3">&#128274;</div>
-                    <h3 class="font-semibold mb-2">Isolated auth</h3>
-                    <p class="text-claude-muted text-sm">Each profile has its own OAuth session in the macOS Keychain. Fully separate.</p>
+                <div class="bg-codex-card border border-codex-border rounded-lg p-6">
+                    <div class="text-codex-blue text-2xl mb-3">&#128260;</div>
+                    <h3 class="font-semibold mb-2">Auto-switch on quota</h3>
+                    <p class="text-codex-muted text-sm">Detects rate-limit errors and retries with the next account automatically.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- All commands -->
-    <section class="px-6 py-24 border-t border-claude-border">
+    <section class="px-6 py-24 border-t border-codex-border">
         <div class="max-w-3xl mx-auto">
             <h2 class="text-3xl sm:text-4xl font-bold mb-12">Commands</h2>
-            <div class="bg-claude-dark border border-claude-border rounded-lg overflow-hidden">
+            <div class="bg-codex-dark border border-codex-border rounded-lg overflow-hidden">
                 <table class="w-full text-sm font-mono">
-                    <tbody class="divide-y divide-claude-border">
-                        <tr class="hover:bg-claude-card/50 transition-colors">
-                            <td class="px-5 py-3.5 text-claude-orange whitespace-nowrap">claude-switch &lt;name&gt;</td>
-                            <td class="px-5 py-3.5 text-claude-muted">Launch Claude with that profile</td>
+                    <tbody class="divide-y divide-codex-border">
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch &lt;name&gt;</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Launch Codex with that profile</td>
                         </tr>
-                        <tr class="hover:bg-claude-card/50 transition-colors">
-                            <td class="px-5 py-3.5 text-claude-orange whitespace-nowrap">claude-switch create</td>
-                            <td class="px-5 py-3.5 text-claude-muted">Create a new profile</td>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch create</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Create a new profile</td>
                         </tr>
-                        <tr class="hover:bg-claude-card/50 transition-colors">
-                            <td class="px-5 py-3.5 text-claude-orange whitespace-nowrap">claude-switch list</td>
-                            <td class="px-5 py-3.5 text-claude-muted">Show all profiles + login status</td>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch list</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Show all profiles + login status</td>
                         </tr>
-                        <tr class="hover:bg-claude-card/50 transition-colors">
-                            <td class="px-5 py-3.5 text-claude-orange whitespace-nowrap">claude-switch delete</td>
-                            <td class="px-5 py-3.5 text-claude-muted">Delete a profile</td>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch delete</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Delete a profile</td>
                         </tr>
-                        <tr class="hover:bg-claude-card/50 transition-colors">
-                            <td class="px-5 py-3.5 text-claude-orange whitespace-nowrap">claude-switch</td>
-                            <td class="px-5 py-3.5 text-claude-muted">Interactive menu</td>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch auto</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Launch with auto account rotation</td>
+                        </tr>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch next</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Manually advance to next profile</td>
+                        </tr>
+                        <tr class="hover:bg-codex-card/50 transition-colors">
+                            <td class="px-5 py-3.5 text-codex-blue whitespace-nowrap">codex-switch</td>
+                            <td class="px-5 py-3.5 text-codex-muted">Interactive menu</td>
                         </tr>
                     </tbody>
                 </table>
@@ -257,16 +265,16 @@
     </section>
 
     <!-- CTA -->
-    <section class="px-6 py-32 border-t border-claude-border text-center">
+    <section class="px-6 py-32 border-t border-codex-border text-center">
         <div class="max-w-2xl mx-auto">
-            <h2 class="text-4xl sm:text-5xl font-bold mb-6">Stop juggling<br><span class="text-claude-orange">logins.</span></h2>
-            <p class="text-claude-muted text-lg mb-10">Install in 5 seconds. Set up in 30.</p>
-            <div class="bg-claude-dark border border-claude-border rounded-lg p-4 max-w-xl mx-auto font-mono text-sm text-left">
-                <span class="text-claude-orange">$</span>
-                <span class="ml-2">curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/claude-switch/main/install.sh | sh</span>
+            <h2 class="text-4xl sm:text-5xl font-bold mb-6">Stop juggling<br><span class="text-codex-blue">logins.</span></h2>
+            <p class="text-codex-muted text-lg mb-10">Install in 5 seconds. Set up in 30.</p>
+            <div class="bg-codex-dark border border-codex-border rounded-lg p-4 max-w-xl mx-auto font-mono text-sm text-left">
+                <span class="text-codex-blue">$</span>
+                <span class="ml-2">curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh</span>
             </div>
             <div class="mt-8">
-                <a href="https://github.com/SaschaHeyer/claude-switch" class="inline-flex items-center gap-2 bg-claude-orange hover:bg-claude-orange/90 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+                <a href="https://github.com/SaschaHeyer/codex-switch" class="inline-flex items-center gap-2 bg-codex-blue hover:bg-codex-blue/90 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                     View on GitHub
                 </a>
@@ -275,16 +283,16 @@
     </section>
 
     <!-- Footer -->
-    <footer class="px-6 py-8 border-t border-claude-border">
-        <div class="max-w-3xl mx-auto flex items-center justify-between text-claude-muted text-sm">
-            <p>Claude Switch is not affiliated with Anthropic.</p>
-            <a href="https://github.com/SaschaHeyer/claude-switch" class="hover:text-claude-text transition-colors">GitHub</a>
+    <footer class="px-6 py-8 border-t border-codex-border">
+        <div class="max-w-3xl mx-auto flex items-center justify-between text-codex-muted text-sm">
+            <p>Codex Switch is not affiliated with OpenAI.</p>
+            <a href="https://github.com/SaschaHeyer/codex-switch" class="hover:text-codex-text transition-colors">GitHub</a>
         </div>
     </footer>
 
     <script>
         function copyInstall() {
-            const cmd = 'curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/claude-switch/main/install.sh | sh';
+            const cmd = 'curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh';
             navigator.clipboard.writeText(cmd);
             document.getElementById('copy-icon').classList.add('hidden');
             document.getElementById('check-icon').classList.remove('hidden');
