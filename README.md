@@ -251,6 +251,20 @@ Auto-switch rotation state is stored in `~/.codex-switch-auto`.
 - macOS or Linux
 - bash 3.2+
 
+### Compatibility
+
+**Codex Switch works with the Codex CLI only — not the VS Code extension.**
+
+The VS Code Codex extension manages its own authentication and config inside the IDE, independently from the terminal binary. Setting `CODEX_HOME` (the mechanism Codex Switch uses to isolate profiles) has no effect on the extension.
+
+| Environment | Supported |
+|-------------|-----------|
+| Terminal (Codex CLI) | Yes |
+| macOS app (Codex) | No |
+| VS Code extension | No |
+
+If you primarily use Codex through the VS Code extension or the desktop app, codex-switch won't help — account switching needs to be done manually through those interfaces.
+
 ---
 
 ## Credits
