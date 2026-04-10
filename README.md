@@ -179,6 +179,18 @@ Auto-switch rotation state is stored in `~/.codex-switch-auto`.
 
 ---
 
+## Credits
+
+This project is a fork of [claude-switch](https://github.com/SaschaHeyer/claude-switch) by [Sascha Heyer](https://github.com/SaschaHeyer).
+
+The original tool solved the same problem for Claude Code — multiple accounts on one machine with zero friction. All the core architecture (profile directories, symlinked shared config, gum-based UI, alias management) comes from his work.
+
+This fork ports it to the Codex CLI and adds automatic account rotation on quota/rate-limit errors.
+
+Thank you, Sascha. Great idea, great execution.
+
+---
+
 ## License
 
 MIT
