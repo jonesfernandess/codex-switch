@@ -128,6 +128,29 @@ Captures stderr, detects quota/rate-limit errors (`429`, `rate limit exceeded`, 
 codex-switch next   # advance to the next profile manually
 ```
 
+### Make every `codex` call auto-switch
+
+During install, you'll be prompted:
+
+```
+  Optional: make every codex call auto-switch accounts.
+  This will add the following line to ~/.zshrc:
+
+    alias codex='codex-switch auto'
+
+  Any time you run 'codex', it will automatically use the next
+  profile in rotation and retry on quota/rate-limit errors.
+
+  Add this alias? [y/N]
+```
+
+If you accept, every `codex` call goes through auto-switch transparently. You can always add it manually later:
+
+```bash
+echo "alias codex='codex-switch auto'" >> ~/.zshrc
+source ~/.zshrc
+```
+
 ---
 
 ## When is auto useful?
