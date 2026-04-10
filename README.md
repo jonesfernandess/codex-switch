@@ -9,6 +9,7 @@ One machine. Multiple logins. Zero friction. Auto-switches on quota.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-supported-brightgreen.svg)]()
 [![Linux](https://img.shields.io/badge/Linux-supported-brightgreen.svg)]()
+[![Windows](https://img.shields.io/badge/Windows-supported-brightgreen.svg)]()
 [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-v0.118+-blueviolet.svg)](https://github.com/openai/codex)
 
 </div>
@@ -33,23 +34,26 @@ Both can run in separate terminals, simultaneously. Hit a quota? Switch is insta
 
 ## Install
 
+macOS / Linux:
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/jonesfernandess/codex-switch/main/install.sh | sh
 ```
 
-Or with Homebrew:
+Windows (PowerShell 7+):
 
-```bash
-brew install gum  # required dependency
-curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh
+```powershell
+irm https://raw.githubusercontent.com/jonesfernandess/codex-switch/main/install.ps1 | iex
 ```
 
 <details>
 <summary><strong>Manual install</strong></summary>
 
+macOS / Linux:
+
 ```bash
 # Download
-curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/codex-switch \
+curl -fsSL https://raw.githubusercontent.com/jonesfernandess/codex-switch/main/codex-switch \
   -o ~/.local/bin/codex-switch
 
 # Make executable
@@ -59,13 +63,32 @@ chmod +x ~/.local/bin/codex-switch
 brew install gum
 ```
 
+Windows (PowerShell):
+
+```powershell
+mkdir $HOME\.local\bin -Force
+irm https://raw.githubusercontent.com/jonesfernandess/codex-switch/main/codex-switch.ps1 -OutFile $HOME\.local\bin\codex-switch.ps1
+@"
+@echo off
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.local\bin\codex-switch.ps1" %*
+"@ | Out-File -Encoding ASCII $HOME\.local\bin\codex-switch.cmd
+```
+
 </details>
 
 <details>
 <summary><strong>Uninstall</strong></summary>
 
+macOS / Linux:
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SaschaHeyer/codex-switch/main/install.sh | sh -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/jonesfernandess/codex-switch/main/install.sh | sh -s -- uninstall
+```
+
+Windows (PowerShell):
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File $HOME\.local\bin\install.ps1 uninstall
 ```
 
 </details>
@@ -149,6 +172,13 @@ If you accept, every `codex` call goes through auto-switch transparently. You ca
 ```bash
 echo "alias codex='codex-switch auto'" >> ~/.zshrc
 source ~/.zshrc
+```
+
+PowerShell equivalent:
+
+```powershell
+Add-Content -Path $PROFILE -Value "`nfunction codex { codex-switch auto @args }`n"
+. $PROFILE
 ```
 
 ---
@@ -247,9 +277,8 @@ Auto-switch rotation state is stored in `~/.codex-switch-auto`.
 ## Requirements
 
 - [Codex CLI](https://github.com/openai/codex) v0.118+
-- [gum](https://github.com/charmbracelet/gum) (auto-installed via Homebrew if missing)
-- macOS or Linux
-- bash 3.2+
+- macOS/Linux: bash 3.2+ and [gum](https://github.com/charmbracelet/gum)
+- Windows: PowerShell 7+
 
 ### Compatibility
 
@@ -259,7 +288,8 @@ The VS Code Codex extension manages its own authentication and config inside the
 
 | Environment | Supported |
 |-------------|-----------|
-| Terminal (Codex CLI) | Yes |
+| Terminal (Codex CLI) - macOS/Linux | Yes |
+| Terminal (Codex CLI) - Windows PowerShell | Yes |
 | macOS app (Codex) | No |
 | VS Code extension | No |
 
