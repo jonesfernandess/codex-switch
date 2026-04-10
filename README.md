@@ -130,6 +130,57 @@ codex-switch next   # advance to the next profile manually
 
 ---
 
+## When is auto useful?
+
+### 1. You have multiple accounts and want to spread usage
+
+Each call to `codex-switch auto` picks the next profile in rotation automatically — no thinking, no choosing.
+
+```
+1st session → default  (personal account)
+2nd session → work     (company account)
+3rd session → client   (client account)
+4th session → default  ← wraps around
+```
+
+Useful when you pay per usage and want to distribute cost across accounts, or when each account has its own monthly limit.
+
+### 2. You hit a quota in the middle of an exec
+
+```bash
+codex-switch auto exec "refactor the entire service layer"
+```
+
+If the current account returns a 429 or "quota exceeded", auto-switch moves to the next one and retries the same prompt — silently, without any intervention.
+
+### 3. Scripts and automations that can't stop
+
+```bash
+for task in tasks/*.md; do
+  codex-switch auto exec "$(cat $task)"
+done
+```
+
+Auto-switch ensures the script doesn't stall on a quota error. It cycles through every available account before giving up.
+
+### 4. Interactive session that closed with an error
+
+If a TUI session exits with a non-zero code (quota, expired token, etc.), the terminal asks:
+
+```
+! Codex exited with error (code 1).
+? Retry with next profile (work)? [Yes, switch / No, exit]
+```
+
+One `y` and you're back in, on a different account, without retyping anything.
+
+### What it does NOT solve
+
+- Cannot detect quota **inside** an active TUI session — Codex owns the terminal, there's no way to intercept
+- Makes no difference with a single account — requires 2+ profiles to be useful
+
+---
+
 ## Commands
 
 | Command | Description |
@@ -176,6 +227,18 @@ Auto-switch rotation state is stored in `~/.codex-switch-auto`.
 - [gum](https://github.com/charmbracelet/gum) (auto-installed via Homebrew if missing)
 - macOS or Linux
 - bash 3.2+
+
+---
+
+## Credits
+
+This project is a fork of [claude-switch](https://github.com/SaschaHeyer/claude-switch) by [Sascha Heyer](https://github.com/SaschaHeyer).
+
+The original tool solved the same problem for Claude Code — multiple accounts on one machine with zero friction. All the core architecture (profile directories, symlinked shared config, gum-based UI, alias management) comes from his work.
+
+This fork ports it to the Codex CLI and adds automatic account rotation on quota/rate-limit errors.
+
+Thank you, Sascha. Great idea, great execution.
 
 ---
 
